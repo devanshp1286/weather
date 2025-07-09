@@ -2,10 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from PIL import Image
-import matplotlib.pyplot as plt
 import os
-import requests
-from io import BytesIO
 
 # Set page config
 st.set_page_config(
@@ -211,27 +208,15 @@ def main():
                 'Probability': results['all_predictions']
             }).sort_values('Probability', ascending=False)
             
-            # Display as bar chart
-            fig, ax = plt.subplots(figsize=(10, 6))
-            bars = ax.barh(prob_df['Class'][::-1], prob_df['Probability'][::-1])
-            ax.set_xlabel('Probability')
-            ax.set_title('Class Probabilities')
-            ax.set_xlim(0, 1)
-            
-            # Color the highest bar differently
-            bars[len(bars)-1].set_color('red')
-            
-            # Add percentage labels
-            for i, (class_name, prob) in enumerate(zip(prob_df['Class'][::-1], prob_df['Probability'][::-1])):
-                ax.text(prob + 0.01, i, f'{prob:.1%}', va='center')
-            
-            plt.tight_layout()
-            st.pyplot(fig)
+            # Display as Streamlit bar chart (no matplotlib needed)
+            st.bar_chart(prob_df.set_index('Class')['Probability'])
             
             # Display detailed probabilities table
             st.subheader("📋 Detailed Probabilities")
-            prob_df['Probability'] = prob_df['Probability'].apply(lambda x: f"{x:.4f} ({x:.2%})")
-            st.dataframe(prob_df, use_container_width=True)
+            prob_df['Probability_Display'] = prob_df['Probability'].apply(lambda x: f"{x:.4f} ({x:.2%})")
+            
+            # Show top 5 predictions
+            st.dataframe(prob_df[['Class', 'Probability_Display']].head(10), use_container_width=True)
         
         else:
             st.info("👆 Upload an image and click 'Classify Image' to see results here.")
