@@ -1,10 +1,11 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
 import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
 import os
+import requests
+from io import BytesIO
 
 # Set page config
 st.set_page_config(
@@ -13,57 +14,67 @@ st.set_page_config(
     layout="wide"
 )
 
-# Cache the model loading to improve performance
-@st.cache_resource
-def load_model():
-    """Load the pretrained model"""
-    try:
-        # First try to load from local file
-        if os.path.exists('model.v1.h5'):
-            model = tf.keras.models.load_model('model.v1.h5')
-            return model
-        
-        # If not found locally, download from Google Drive
-        # Google Drive direct download URL for your model
-        model_url = "https://drive.google.com/uc?id=1c5aW3RTb7zqZGqFrG0cVfM6rdloJdTr3"
-        
-        with st.spinner("Downloading model (first time only)... This may take a few minutes."):
-            # Download the model
-            import urllib.request
-            
-            # Create a progress bar for download
-            def download_progress(block_num, block_size, total_size):
-                if total_size > 0:
-                    percent = min(100, (block_num * block_size * 100) / total_size)
-                    st.progress(percent / 100)
-            
-            urllib.request.urlretrieve(model_url, 'model.v1.h5', download_progress)
-            model = tf.keras.models.load_model('model.v1.h5')
-            st.success("Model downloaded and loaded successfully!")
-            return model
-            
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        st.error("Please check if the Google Drive link is correct and publicly accessible.")
-        return None
+# For demonstration purposes - mock prediction function
+def mock_predict(image_array, class_names):
+    """
+    Mock prediction function for demonstration
+    Replace this with your actual model prediction when TensorFlow is available
+    """
+    # Generate random predictions for demo
+    np.random.seed(42)  # For consistent results
+    predictions = np.random.dirichlet(np.ones(len(class_names)), size=1)[0]
+    
+    # Get predicted class index
+    predicted_class_idx = np.argmax(predictions)
+    
+    # Get confidence score
+    confidence = predictions[predicted_class_idx]
+    
+    # Get predicted class name
+    predicted_class = class_names[predicted_class_idx]
+    
+    return predicted_class, confidence, predictions
 
 # Cache the CSV loading
 @st.cache_data
 def load_class_labels():
-    """Load class labels from CSV"""
+    """Load class labels from CSV or use default classes"""
     try:
         df = pd.read_csv('image_dataset.csv')
         # Extract unique classes from the dataset
         classes = sorted(df['label'].unique())
         return classes, df
     except Exception as e:
-        st.error(f"Error loading CSV: {e}")
-        return [], pd.DataFrame()
+        st.warning(f"CSV not found, using default classes: {e}")
+        # Default satellite image classes
+        default_classes = [
+            'Agricultural Land',
+            'Airplane',
+            'Baseball Diamond',
+            'Beach',
+            'Buildings',
+            'Chaparral',
+            'Dense Residential',
+            'Forest',
+            'Freeway',
+            'Golf Course',
+            'Harbor',
+            'Intersection',
+            'Medium Residential',
+            'Mobile Home Park',
+            'Overpass',
+            'Parking Lot',
+            'River',
+            'Runway',
+            'Sparse Residential',
+            'Storage Tanks',
+            'Tennis Court'
+        ]
+        return default_classes, pd.DataFrame()
 
 def preprocess_image(image, target_size=(224, 224)):
     """
     Preprocess the uploaded image for model prediction
-    Adjust target_size based on your model's input requirements
     """
     # Convert to RGB if needed
     if image.mode != 'RGB':
@@ -75,7 +86,7 @@ def preprocess_image(image, target_size=(224, 224)):
     # Convert to numpy array
     img_array = np.array(image)
     
-    # Normalize pixel values (common for most models)
+    # Normalize pixel values
     img_array = img_array.astype('float32') / 255.0
     
     # Add batch dimension
@@ -83,22 +94,14 @@ def preprocess_image(image, target_size=(224, 224)):
     
     return img_array
 
-def predict_image(model, image_array, class_names):
+def predict_image(image_array, class_names):
     """Make prediction on the preprocessed image"""
     try:
-        # Get prediction
-        predictions = model.predict(image_array)
+        # For now, using mock prediction
+        # TODO: Replace with actual model prediction when TensorFlow is available
+        predicted_class, confidence, predictions = mock_predict(image_array, class_names)
         
-        # Get predicted class index
-        predicted_class_idx = np.argmax(predictions[0])
-        
-        # Get confidence score
-        confidence = predictions[0][predicted_class_idx]
-        
-        # Get predicted class name
-        predicted_class = class_names[predicted_class_idx]
-        
-        return predicted_class, confidence, predictions[0]
+        return predicted_class, confidence, predictions
     
     except Exception as e:
         st.error(f"Error during prediction: {e}")
@@ -109,16 +112,14 @@ def main():
     st.title("🛰️ Satellite Image Classification")
     st.markdown("### Upload a satellite image to classify it using our pretrained model")
     
-    # Load model and class labels
-    model = load_model()
+    # Show warning about TensorFlow
+    st.warning("⚠️ **Demo Mode**: TensorFlow is not available. This app is running in demo mode with mock predictions. To use the actual model, deploy on a platform that supports TensorFlow.")
+    
+    # Load class labels
     class_names, df = load_class_labels()
     
-    if model is None:
-        st.error("❌ Model could not be loaded. Please check if 'model.v1.h5' exists in the project directory.")
-        return
-    
     if len(class_names) == 0:
-        st.error("❌ Class labels could not be loaded. Please check if 'image_dataset.csv' exists in the project directory.")
+        st.error("❌ No class labels available.")
         return
     
     # Sidebar with model info
@@ -136,6 +137,16 @@ def main():
             st.subheader("📈 Dataset Statistics:")
             class_counts = df['label'].value_counts()
             st.write(class_counts)
+        
+        # Instructions
+        st.subheader("📝 Instructions:")
+        st.markdown("""
+        1. Upload a satellite image
+        2. Click 'Classify Image'
+        3. View the prediction results
+        
+        **Note:** Currently in demo mode.
+        """)
     
     # Main content area
     col1, col2 = st.columns([1, 1])
@@ -153,6 +164,10 @@ def main():
             image = Image.open(uploaded_file)
             st.image(image, caption="Uploaded Image", use_column_width=True)
             
+            # Image info
+            st.info(f"**Image Size:** {image.size[0]} x {image.size[1]} pixels")
+            st.info(f"**Image Mode:** {image.mode}")
+            
             # Add predict button
             if st.button("🔍 Classify Image", type="primary"):
                 with st.spinner("Classifying image..."):
@@ -161,7 +176,7 @@ def main():
                     
                     # Make prediction
                     predicted_class, confidence, all_predictions = predict_image(
-                        model, processed_image, class_names
+                        processed_image, class_names
                     )
                     
                     if predicted_class is not None:
@@ -223,7 +238,24 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown("**Note:** This app uses a pretrained model for satellite image classification. Results may vary based on image quality and content.")
+    st.markdown("**Note:** This app is currently in demo mode. For production use with actual model predictions, deploy on a platform that supports TensorFlow.")
+    
+    # Deployment suggestions
+    with st.expander("🚀 Deployment Suggestions"):
+        st.markdown("""
+        **For actual model deployment, consider:**
+        
+        1. **Hugging Face Spaces** - Better support for ML libraries
+        2. **Google Cloud Run** - Scalable container deployment
+        3. **AWS EC2** - Full control over environment
+        4. **Heroku** - Easy deployment with buildpacks
+        5. **Railway** - Modern deployment platform
+        
+        **To use TensorFlow on Streamlit Cloud:**
+        - Use `tensorflow-cpu` instead of `tensorflow`
+        - Consider converting model to TensorFlow Lite
+        - Optimize model size and memory usage
+        """)
 
 if __name__ == "__main__":
     main()
