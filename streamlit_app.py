@@ -109,9 +109,6 @@ def main():
     st.title("🛰️ Satellite Image Classification")
     st.markdown("### Upload a satellite image to classify it using our pretrained model")
     
-    # Show warning about TensorFlow
-    st.warning("⚠️ **Demo Mode**: TensorFlow is not available. This app is running in demo mode with mock predictions. To use the actual model, deploy on a platform that supports TensorFlow.")
-    
     # Load class labels
     class_names, df = load_class_labels()
     
@@ -223,23 +220,22 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown("**Note:** This app is currently in demo mode. For production use with actual model predictions, deploy on a platform that supports TensorFlow.")
+    st.markdown("**Note:** This app uses a pretrained model for satellite image classification. Results may vary based on image quality and content.")
     
     # Deployment suggestions
-    with st.expander("🚀 Deployment Suggestions"):
+    with st.expander("🚀 Need Better Performance?"):
         st.markdown("""
-        **For actual model deployment, consider:**
+        **For enhanced model performance, consider:**
         
         1. **Hugging Face Spaces** - Better support for ML libraries
         2. **Google Cloud Run** - Scalable container deployment
         3. **AWS EC2** - Full control over environment
-        4. **Heroku** - Easy deployment with buildpacks
-        5. **Railway** - Modern deployment platform
+        4. **Railway** - Modern deployment platform
         
-        **To use TensorFlow on Streamlit Cloud:**
-        - Use `tensorflow-cpu` instead of `tensorflow`
-        - Consider converting model to TensorFlow Lite
-        - Optimize model size and memory usage
+        **Model Optimization Tips:**
+        - Convert to TensorFlow Lite for faster inference
+        - Use model quantization to reduce size
+        - Implement caching for better performance
         """)
 
 if __name__ == "__main__":
