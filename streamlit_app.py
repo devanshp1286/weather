@@ -441,14 +441,6 @@ with col2:
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-else:
-    st.markdown("""
-    <div class="card" style="background: #fef2f2; border-left: 5px solid #ef4444;">
-        <h3 style="color: #dc2626;">🚫 Model Required</h3>
-        <p>Please upload your model file above to start using the satellite image classifier.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
 # === INFORMATION SECTION ===
 st.markdown("""
 <div class="card">
