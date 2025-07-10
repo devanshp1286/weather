@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
-import gdown
+import requests
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
@@ -257,23 +257,66 @@ st.markdown("""
 def load_satellite_model():
     if not os.path.exists(MODEL_PATH):
         with st.spinner("🔄 Downloading model..."):
-            gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
+            try:
+                # Alternative download method using requests
+                response = requests.get(MODEL_URL)
+                response.raise_for_status()
+                
+                with open(MODEL_PATH, 'wb') as f:
+                    f.write(response.content)
+                
+                st.success("✅ Model downloaded successfully!")
+                
+            except Exception as e:
+                st.error(f"❌ Error downloading model: {str(e)}")
+                st.error("Please check your internet connection and try again.")
+                st.info("💡 Alternative: Upload your model file directly using the file uploader below.")
+                return None
     
-    model = load_model(MODEL_PATH)
-    
-    # Display model information for debugging
-    st.write("**Model Information:**")
-    st.write(f"- Model loaded successfully from: {MODEL_PATH}")
-    st.write(f"- Input shape expected: {model.input_shape}")
-    st.write(f"- Output shape: {model.output_shape}")
-    st.write(f"- Number of layers: {len(model.layers)}")
-    
-    return model
+    try:
+        model = load_model(MODEL_PATH)
+        
+        # Display model information for debugging
+        st.write("**Model Information:**")
+        st.write(f"- Model loaded successfully from: {MODEL_PATH}")
+        st.write(f"- Input shape expected: {model.input_shape}")
+        st.write(f"- Output shape: {model.output_shape}")
+        st.write(f"- Number of layers: {len(model.layers)}")
+        
+        return model
+        
+    except Exception as e:
+        st.error(f"❌ Error loading model: {str(e)}")
+        st.info("💡 Please ensure your model file is a valid Keras .h5 file.")
+        return None
 
 model = load_satellite_model()
 
+# Add manual model upload option if automatic download fails
+if model is None:
+    st.markdown("""
+    <div class="card" style="background: #fef2f2; border-left: 5px solid #ef4444;">
+        <h3 style="color: #dc2626;">⚠️ Model Loading Failed</h3>
+        <p>The automatic model download failed. Please upload your model file manually:</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    uploaded_model = st.file_uploader(
+        "Upload your Keras model file (.h5)", 
+        type=["h5"],
+        help="Upload your trained satellite classification model"
+    )
+    
+    if uploaded_model is not None:
+        with open(MODEL_PATH, "wb") as f:
+            f.write(uploaded_model.getbuffer())
+        model = load_model(MODEL_PATH)
+        st.success("✅ Model uploaded and loaded successfully!")
+        st.rerun()
+
 # === MAIN LAYOUT ===
-col1, col2 = st.columns([1, 1], gap="large")
+if model is not None:
+    col1, col2 = st.columns([1, 1], gap="large")
 
 with col1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -397,6 +440,14 @@ with col2:
         """, unsafe_allow_html=True)
     
     st.markdown('</div>', unsafe_allow_html=True)
+
+else:
+    st.markdown("""
+    <div class="card" style="background: #fef2f2; border-left: 5px solid #ef4444;">
+        <h3 style="color: #dc2626;">🚫 Model Required</h3>
+        <p>Please upload your model file above to start using the satellite image classifier.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === INFORMATION SECTION ===
 st.markdown("""
