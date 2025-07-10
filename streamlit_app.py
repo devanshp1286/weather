@@ -258,7 +258,17 @@ def load_satellite_model():
     if not os.path.exists(MODEL_PATH):
         with st.spinner("🔄 Downloading model..."):
             gdown.download(MODEL_URL, MODEL_PATH, quiet=False)
-    return load_model(MODEL_PATH)
+    
+    model = load_model(MODEL_PATH)
+    
+    # Display model information for debugging
+    st.write("**Model Information:**")
+    st.write(f"- Model loaded successfully from: {MODEL_PATH}")
+    st.write(f"- Input shape expected: {model.input_shape}")
+    st.write(f"- Output shape: {model.output_shape}")
+    st.write(f"- Number of layers: {len(model.layers)}")
+    
+    return model
 
 model = load_satellite_model()
 
@@ -284,21 +294,36 @@ with col1:
         
         if st.button("🔍 Classify Image"):
             with st.spinner("🤖 Analyzing satellite image..."):
-                # Preprocess
-                img_array = img_to_array(image) / 255.0
-                img_array = np.expand_dims(img_array, axis=0)
-                
-                # Predict
-                prediction = model.predict(img_array)[0]
-                predicted_class = CLASS_NAMES[np.argmax(prediction)]
-                confidence = float(np.max(prediction))
-                
-                # Store in session
-                st.session_state.result = {
-                    "prediction": predicted_class,
-                    "confidence": confidence,
-                    "all_probs": prediction
-                }
+                try:
+                    # Preprocess
+                    img_array = img_to_array(image) / 255.0
+                    img_array = np.expand_dims(img_array, axis=0)
+                    
+                    # Debug information
+                    st.write(f"**Debug Info:**")
+                    st.write(f"- Image shape after preprocessing: {img_array.shape}")
+                    st.write(f"- Image pixel range: {img_array.min():.4f} to {img_array.max():.4f}")
+                    
+                    # Predict
+                    prediction = model.predict(img_array)[0]
+                    predicted_class = CLASS_NAMES[np.argmax(prediction)]
+                    confidence = float(np.max(prediction))
+                    
+                    # Debug prediction info
+                    st.write(f"- Raw prediction values: {prediction}")
+                    st.write(f"- Predicted class index: {np.argmax(prediction)}")
+                    st.write(f"- All class probabilities: {dict(zip(CLASS_NAMES, prediction))}")
+                    
+                    # Store in session
+                    st.session_state.result = {
+                        "prediction": predicted_class,
+                        "confidence": confidence,
+                        "all_probs": prediction
+                    }
+                    
+                except Exception as e:
+                    st.error(f"Error during prediction: {str(e)}")
+                    st.write("Please check if your model is compatible with the expected input format.")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
